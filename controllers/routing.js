@@ -9,3 +9,5 @@ router.get('/', function(req, res) {
 router.get('/statblock', function(req, res) {
     res.render('statblock.html');
 })
+
+module.exports = router;
