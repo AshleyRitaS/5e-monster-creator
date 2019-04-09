@@ -73,6 +73,10 @@ var initDb = function(callback) {
   });
 };
 
+app.use('/static', express.static(__dirname + '/static'));
+app.use(require('./controllers/routing'));
+
+/*
 app.get('/', function (req, res) {
   // try to initialize the db on every request if it's not already
   // initialized.
@@ -111,7 +115,7 @@ app.get('/pagecount', function (req, res) {
   } else {
     res.send('{ pageCount: -1 }');
   }
-});
+});*/
 
 // error handling
 app.use(function(err, req, res, next){
