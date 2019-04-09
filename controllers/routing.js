@@ -3,7 +3,7 @@ var express = require('express'),
     morgan  = require('morgan');
 
 router.get('/', function(req, res) {
-    res.render('statblock.html');
+    res.send('routing.js');
 })
 
 router.get('/statblock', function(req, res) {
