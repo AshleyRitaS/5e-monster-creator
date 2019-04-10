@@ -136,10 +136,10 @@ var monster5e = (function() {
     function monster5e() {
         var permStats = {},
             events = {},
-            monster;
+            monster = {};
         
         monster.on = function(eventName, callback) {
-            if (eventName in events) {
+            if (events.hasOwnProperty(eventName)) {
                 events[eventName].push(callback);
             } else {
                 events[eventName] = [callback];
