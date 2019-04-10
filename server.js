@@ -74,6 +74,7 @@ var initDb = function(callback) {
 };
 
 app.use('/static', express.static(__dirname + '/static'));
+app.use('/valloric', express.static(__dirname + '/valloric-statblock5e'));
 app.use(require('./controllers/routing'));
 
 /*
