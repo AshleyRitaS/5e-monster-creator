@@ -1,16 +1,4 @@
 var monster5e = (function() {
-    var crValues = [
-        {
-            name:   '0',
-            prof:   2,
-            ac:     13,
-            hp:     7,
-            attack: 3,
-            damage: 2,
-            save:   13
-        }
-    ];
-
     var crValues = (function() {
         var rawValues = [
                 ['1/8',2,13,7,35,3,2,3,13],
@@ -45,7 +33,8 @@ var monster5e = (function() {
                 ['27',8,19,671,715,13,249,266,22],
                 ['28',8,19,716,760,13,267,284,22],
                 ['29',9,19,761,805,13,285,302,22],
-                ['30',9,19,806,850,14,303,320,23]
+                ['30',9,19,806,850,14,303,320,23],
+                ['Above 30',9,19,851,Number.MAX_SAFE_INTEGER,14,321,Number.MAX_SAFE_INTEGER,23]
             ],
             output = [],
             i, val;
@@ -66,7 +55,62 @@ var monster5e = (function() {
         }
         return output;
     }());
-    
+
+    var sizes = {
+        tiny:4,
+        small:6,
+        medium:8,
+        large:10,
+        huge:12,
+        gargantuan:20
+    }
+
+    function copyStats(values) {
+        values = values || {};
+        values.attr = values.attr || {};
+        values.hp = values.hp || {};
+
+        var newStats = {
+            attr:   {
+                        str:Number(values.attr.str) || 10,
+                        dex:Number(values.attr.dex) || 10,
+                        con:Number(values.attr.con) || 10,
+                        int:Number(values.attr.int) || 10,
+                        wis:Number(values.attr.wis) || 10,
+                        cha:Number(values.attr.cha) || 10,
+                    },
+            ac:     Number(values.ac) || 13,
+            attack: Number(values.attack) || 3,
+            save:   Number(values.save) || 13,
+            damage: Number(values.damage)|| 6
+        };
+        if (sizes.hasOwnProperty(values.size)) {
+            newStats.size = values.size;
+        } else {
+            newStats.size = 'medium';
+        }
+        newStats.hp = {
+            diceExp: values.hp.diceExp ? String(values.hp.diceExp) : '',
+            val:    Number(values.hp.val) || 18
+        }
+        newStats.attrMod = {
+            str:Math.floor((newStats.attr.str - 10) / 2),
+            dex:Math.floor((newStats.attr.dex - 10) / 2),
+            con:Math.floor((newStats.attr.con - 10) / 2),
+            int:Math.floor((newStats.attr.int - 10) / 2),
+            wis:Math.floor((newStats.attr.wis - 10) / 2),
+            cha:Math.floor((newStats.attr.cha - 10) / 2),
+        }
+        return newStats;
+    };
+    //returns an object representing the CR indicated by the Stats object it is passed
+    /*
+    return {
+        cr: overall CR
+        oCR: offensive CR
+        dCR: defensive CR
+    }
+    */
     function calculateCR(stats) {
         var oCR = false,
             dCR = false,
@@ -81,7 +125,7 @@ var monster5e = (function() {
         
         for (i = 0; i < crValues.length && (oCR === false || dCR === false); i++) {
             val = crValues[i];
-            if (dCR === false && stats.hp > val.hpMin) {
+            if (dCR === false && stats.hp <= val.hpMax) {
                 dCR = i;
                 acDiff = stats.ac - val.ac;
                 while (acDiff >= 2) {
@@ -93,7 +137,7 @@ var monster5e = (function() {
                     acDiff += 2;
                 }
             }
-            if (oCR === false && dpr > val.damageMin) {
+            if (oCR === false && dpr <= val.damageMax) {
                 oCR = i;
                 attackDiff = stats.attack - val.attack;
                 saveDiff = stats.save - val.save;
@@ -114,69 +158,103 @@ var monster5e = (function() {
             oCR:oCR,
             dCR:dCR
         }
-    }
+    };
 
+    //Calculates average damage per round based on the stats object it is passed
     function calculateDPR(stats) {
         return stats.damage;
     }
 
-    function cloneStats(stats) {
-        return {
-            cr:     stats.cr,
-            oCR:    stats.oCR,
-            dCR:    stats.dCR,
-            hp:     stats.hp,
-            ac:     stats.ac,
-            attack: stats.attack,
-            save:   stats.save,
-            damage: stats.damage
+    //creates a dice code between min and max, using the provided die size and modifiers. If a code cannot be created within range, returns null
+    /* returns {
+        diceExp: a string representing the dice code
+        val: the numeric value of the code
+    }*/
+    function createDiceCodeWithinRange(min, max, dieSize, modifierPerDie = 0, baseModifier = 0) {
+        var valPerDie = (dieSize+1)/2 + modifierPerDie,
+            val = baseModifier,
+            count = 0;
+        while (val < min) {
+            val += valPerDie;
+            count++;
+        }
+        if (val < max) {
+            var modifier = modifierPerDie * count + baseModifier;
+            return {
+                diceExp:count+'d'+dieSize + (modifier ? ' + ' + modifier : ''),
+                val:val
+            };
+        } else {
+            return null;
         }
     }
     
-    function monster5e() {
-        var permStats = {},
+    function Monster5e() {
+        var permStats = copyStats({}),
+            cr = calculateCR(permStats),
             events = {},
             monster = {};
         
-        monster.on = function(eventName, callback) {
+        this.on = function(eventName, callback) {
             if (events.hasOwnProperty(eventName)) {
                 events[eventName].push(callback);
             } else {
                 events[eventName] = [callback];
             }
         }
-        monster.onChange = function(callback) {
+        this.onChange = function(callback) {
             monster.on('change', callback);
         };
         
-        function fireEvent(eventName) {
-            if (eventName in events) {
+        this.fireEvent = function(eventName) {
+            if (events.hasOwnProperty(eventName)) {
                 events[eventName].forEach(callback => {
                     callback(monster);
                 });
             }
         }
 
-        monster.setStats = function(stats) {
-            var calcCR;
-            calcCR = calculateCR(stats);
-            permStats = cloneStats(stats);
-            permStats.cr = calcCR.cr;
-            permStats.oCR = calcCR.oCR;
-            permStats.dCR = calcCR.dCR;
-            fireEvent('change');
+        this.setAttr = function(attr) {
+            var tempStats = copyStats(permStats);
+            Object.assign(tempStats.attr, attr);
+            tempStats = copyStats(tempStats);
+            var con = tempStats.attrMod.con;
+            var hpDiceSize = sizes[tempStats.size];
+            var hpMin = crValues[cr.cr].hpMin;
+            var hpMax = crValues[cr.cr].hpMax;
+            console.log(hpMin, hpMax, hpDiceSize, con);
+            var hpDice = createDiceCodeWithinRange(hpMin, hpMax, hpDiceSize, con);
+            console.log(hpDice);
+            if (hpDice) {
+                tempStats.hp.diceExp = hpDice.diceExp;
+                tempStats.hp.val = hpDice.val;
+                this.setStats(tempStats);
+                return true;
+            } else {
+                return null;
+            }
         }
 
-        monster.getStats = function() {
-            return cloneStats(permStats);
+        this.setStats = function(stats) {
+            var values = copyStats(stats);
+            var newCR = calculateCR(values);
+            cr = newCR;
+            permStats = copyStats(stats);
+            this.fireEvent('change');
         }
 
-        monster.execTest = function(code) {
-            eval(code);
+        this.getStats = function() {
+            return copyStats(permStats);
         }
 
-        return monster;
+        this.getCR = function() {
+            return {
+                cr:cr.cr,
+                oCR:cr.oCR,
+                dCR:cr.dCR
+            }
+        }
     };
 
-    return monster5e;
+    return Monster5e;
 }());
