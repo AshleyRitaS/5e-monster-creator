@@ -19,21 +19,13 @@ function DiceExp(numberOfDiceOrString = 0, sizeOfDice = 0, staticModifier = 0, s
         mod = values.mod;
     }
     
-    this.getValue = function() {
+    this.valueOf = function() {
         return numDice * (diceSize+1)/2 + mod;
     }
 
-    this.getRaw = function() {
-        return {
-            numDice: numDice,
-            diceSize: diceSize,
-            mod: mod
-        };
+    this.toString = function() {
+        return numDice + 'd' + diceSize + (mod ? (mod > 0 ? '+' : '-') + Math.abs(mod) : '');
     }
-}
-
-DiceExp.prototype.valueOf = function() {
-    return this.getValue();
 }
 
 function cleanInput(values = {}, strict = DiceExp.strictSizes) {
@@ -46,11 +38,6 @@ function cleanInput(values = {}, strict = DiceExp.strictSizes) {
     }
 
     return null;
-}
-
-DiceExp.prototype.toString = function() {
-    var raw = this.getRaw();
-    return raw.numDice + 'd' + raw.diceSize + (raw.mod ? (raw.mod > 0 ? '+' : '-') + Math.abs(raw.mod) : '');
 }
 
 //returns true if size is valid, otherwise throws if throws = true or returns false
