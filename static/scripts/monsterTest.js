@@ -1,4 +1,5 @@
-var monster = new monster5e();
+import {Monster} from '/static/scripts/monster.js'
+var monster = new Monster();
 monster.setStats(
     {
         hp:{val:80},
